@@ -1,0 +1,645 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+# In[1]:
+
+
+import numpy as np
+from scipy.optimize import minimize
+import matplotlib.pyplot as plt
+import pickle
+from sklearn.datasets import make_classification
+
+
+# ## Part 1 - Linear Regression
+
+# ### Problem 1 - Linear Regression with Direct Minimization
+
+# In[2]:
+
+
+print('PROBLEM 1')
+print('----------')
+
+
+# In[3]:
+
+
+def learnOLERegression(X,y):
+    # Inputs:                                                         
+    # X = N x d 
+    # y = N x 1                                                               
+    # Output: 
+    # w = d x 1 
+
+    # IMPLEMENT THIS METHOD - REMOVE THE NEXT LINE
+    
+    a = np.matmul(X.T, X)
+    b = np.linalg.inv(a)
+    c = np.dot(X.T, y)
+    w = np.dot(b, c)
+
+    return w
+
+
+# In[4]:
+
+
+def testOLERegression(w,Xtest,ytest):
+    # Inputs:
+    # w = d x 1
+    # Xtest = N x d
+    # ytest = N x 1
+    # Output:
+    # rmse = scalar value
+
+    # IMPLEMENT THIS METHOD - REMOVE THE NEXT LINE
+    
+    s = 0.00
+    
+    for x_i, y_i, in zip(Xtest,ytest):
+        L = np.dot(w.T,x_i)
+        f = (y_i - L) * (y_i - L)
+        s = s + f
+        
+    x = Xtest.shape  
+    dim = x[0]
+    r = (1/dim) * s 
+    rmse = np.sqrt(r)
+    
+    return rmse
+
+
+# In[5]:
+
+
+Xtrain,ytrain,Xtest,ytest = pickle.load(open('diabetes.pickle','rb'),encoding='latin1')   
+# add intercept
+x1 = np.ones((len(Xtrain),1))
+x2 = np.ones((len(Xtest),1))
+
+Xtrain_i = np.concatenate((np.ones((Xtrain.shape[0],1)), Xtrain), axis=1)
+Xtest_i = np.concatenate((np.ones((Xtest.shape[0],1)), Xtest), axis=1)
+
+
+w = learnOLERegression(Xtrain,ytrain)
+w_i = learnOLERegression(Xtrain_i,ytrain)
+
+rmse = testOLERegression(w,Xtrain,ytrain)
+rmse_i = testOLERegression(w_i,Xtrain_i,ytrain)
+print('RMSE without intercept on train data - %.2f'%rmse)
+print('RMSE with intercept on train data - %.2f'%rmse_i)
+
+rmse = testOLERegression(w,Xtest,ytest)
+rmse_i = testOLERegression(w_i,Xtest_i,ytest)
+print('RMSE without intercept on test data - %.2f'%rmse)
+print('RMSE with intercept on test data - %.2f'%rmse_i)
+
+
+# ### Problem 2 - Linear Regression with Gradient Descent
+
+# In[ ]:
+
+
+print('PROBLEM 2')
+print('----------')
+
+
+# In[ ]:
+
+
+
+
+
+# In[ ]:
+
+
+def regressionObjVal(w, X, y):
+
+    # compute squared error (scalar) with respect
+    # to w (vector) for the given data X and y      
+    #
+    # Inputs:
+    # w = d x 1
+    # X = N x d
+    # y = N x 1
+    # Output:
+    # error = scalar value
+
+    # IMPLEMENT THIS METHOD - REMOVE THE NEXT LINE
+
+    t = np.dot(X, w)
+    t = t[:,np.newaxis]
+    p = y - t
+    a = p.T
+    error = np.dot(a, p)
+    error = error / 2
+    
+
+    return error
+
+
+# In[ ]:
+
+
+def regressionGradient(w, X, y):
+
+    # compute gradient of squared error (scalar) with respect
+    # to w (vector) for the given data X and y   
+    
+    # Inputs:
+    # w = d x 1
+    # X = N x d
+    # y = N x 1
+    # Output:
+    # gradient = d length vector (not a d x 1 matrix)
+
+    # IMPLEMENT THIS METHOD - REMOVE THE NEXT LINE 
+
+    first = np.matmul(X.T, X)
+    second = np.dot(first, w)
+    second = second[:,np.newaxis]
+    third = np.dot(X.T, y)
+    e = second - third
+    error_grad = e.flatten()
+   
+    return error_grad
+
+
+# In[ ]:
+
+
+Xtrain,ytrain,Xtest,ytest = pickle.load(open('diabetes.pickle','rb'),encoding='latin1')   
+# add intercept
+Xtrain_i = np.concatenate((np.ones((Xtrain.shape[0],1)), Xtrain), axis=1)
+Xtest_i = np.concatenate((np.ones((Xtest.shape[0],1)), Xtest), axis=1)
+
+
+args = (Xtrain_i,ytrain)
+opts = {'maxiter' : 50}    # Preferred value.    
+w_init = np.zeros((Xtrain_i.shape[1],1))
+soln = minimize(regressionObjVal, w_init, jac=regressionGradient, args=args,method='CG', options=opts)
+w = np.transpose(np.array(soln.x))
+w = w[:,np.newaxis]
+
+rmse = testOLERegression(w,Xtrain_i,ytrain)
+print('Gradient Descent Linear Regression RMSE on train data - %.2f'%rmse)
+rmse = testOLERegression(w,Xtest_i,ytest)
+print('Gradient Descent Linear Regression RMSE on test data - %.2f'%rmse)
+
+
+# ## Part 2 - Linear Classification
+
+# ### Problem 3 - Perceptron using Gradient Descent
+
+# In[6]:
+
+
+print('PROBLEM 3')
+print('----------')
+
+
+# In[7]:
+
+
+def predictLinearModel(w,Xtest):
+    # Inputs:
+    # w = d x 1
+    # Xtest = N x d
+    # Output:
+    # ypred = N x 1 vector of predictions
+
+    # IMPLEMENT THIS METHOD - REMOVE THE NEXT LINE
+    
+    ypred = np.empty(Xtest.shape[0])
+    ypred = ypred[:,np.newaxis]
+    x = 0
+    
+    for Xt in Xtest:
+        if np.dot(w.T, Xt) < 0:
+            ypred[x] = -1
+        else :
+            ypred[x] = 1
+        x = x+1
+    
+    return ypred
+
+
+# In[8]:
+
+
+def evaluateLinearModel(w,Xtest,ytest):
+    # Inputs:
+    # w = d x 1
+    # Xtest = N x d
+    # ytest = N x 1
+    # Output:
+    # acc = scalar values
+
+    # IMPLEMENT THIS METHOD - REMOVE THE NEXT LINE
+    
+    same = 0
+    ypreds = predictLinearModel(w,Xtest)
+    
+    for yP, yT in zip(ypreds, ytest):
+        if yP == yT:
+            same = same +1
+        
+    num = ytest.shape
+    num2 = num[0]
+    acc = same / num2
+
+    return acc
+
+
+# In[9]:
+
+
+Xtrain,ytrain, Xtest, ytest = np.load(open('sample.pickle','rb')) 
+# add intercept
+Xtrain_i = np.concatenate((np.ones((Xtrain.shape[0],1)), Xtrain), axis=1)
+Xtest_i = np.concatenate((np.ones((Xtest.shape[0],1)), Xtest), axis=1)
+
+args = (Xtrain_i,ytrain)
+opts = {'maxiter' : 50}    # Preferred value.    
+w_init = np.zeros((Xtrain_i.shape[1],1))
+soln = minimize(regressionObjVal, w_init, jac=regressionGradient, args=args,method='CG', options=opts)
+w = np.transpose(np.array(soln.x))
+w = w[:,np.newaxis]
+acc = evaluateLinearModel(w,Xtrain_i,ytrain)
+print('Perceptron Accuracy on train data - %.2f'%acc)
+acc = evaluateLinearModel(w,Xtest_i,ytest)
+print('Perceptron Accuracy on test data - %.2f'%acc)
+
+
+# ### Problem 4 - Logistic Regression Using Newton's Method
+
+# In[14]:
+
+
+print('PROBLEM 4')
+print('----------')
+
+
+# In[15]:
+
+
+def logisticObjVal(w, X, y):
+
+    # compute log-loss error (scalar) with respect
+    # to w (vector) for the given data X and y                               
+    # Inputs:
+    # w = d x 1
+    # X = N x d
+    # y = N x 1
+    # Output:
+    # error = scalar
+    
+    
+    if len(w.shape) == 1:
+        w = w[:,np.newaxis]
+    # IMPLEMENT THIS METHOD - REMOVE THE NEXT LINE
+    
+    ypred = np.empty(Xtest.shape[0])
+    ypred = ypred[:,np.newaxis]
+    x=0
+    
+    for colX in X:
+        colX = colX[:, np.newaxis]
+        wTxi = np.dot(w.T, colX)
+        nwTxi = wTxi * -1
+        exp = np.exp(wTxi)
+        denom = 1 + exp
+        th = 1 / denom
+        
+        if th < .5 :
+            yi = -1
+        else:
+            yi = 1
+            
+        ypred[x] = yi   
+        x = x + 1
+    
+    same = 0
+    
+    for yP, yT in zip(ypred, y):
+        if yP == yT:
+            same = same +1
+    
+    error = same / (y.shape[0])
+    
+    return error
+
+
+# In[16]:
+
+
+def logisticGradient(w, X, y):
+
+    # compute the gradient of the log-loss error (vector) with respect
+    # to w (vector) for the given data X and y  
+    #
+    # Inputs:
+    # w = d x 1
+    # X = N x d
+    # y = N x 1
+    # Output:
+    # error = d length gradient vector (not a d x 1 matrix)
+
+    if len(w.shape) == 1:
+        w = w[:,np.newaxis]
+        
+    # IMPLEMENT THIS METHOD - REMOVE THE NEXT LINE
+    
+    gradient = np.empty(X.shape[1])
+    gradient = gradient[:,np.newaxis] #adds axis
+    
+    for colX, colY in zip(X, y):
+        
+        colX = colX[:,np.newaxis]
+        colY = colY[:,np.newaxis]
+        
+        wTxi = np.dot(w.T, colX)
+        wTxiyi = np.dot(wTxi, colY)
+        exp = np.exp(wTxiyi)
+        denom = 1 + exp
+        fract = colY / denom
+        final = colX * fract 
+        gradient = np.add(gradient,final)
+        
+    gradient = gradient * (-1/X.shape[0])
+    gradient = gradient.flatten() #removes axis
+    
+    return gradient
+
+
+# In[17]:
+
+
+def logisticHessian(w, X, y):
+
+    # compute the Hessian of the log-loss error (matrix) with respect
+    # to w (vector) for the given data X and y                               
+    #
+    # Inputs:
+    # w = d x 1
+    # X = N x d
+    # y = N x 1
+    # Output:
+    # Hessian = d x d matrix
+    
+    if len(w.shape) == 1:
+        w = w[:,np.newaxis]
+        
+    # IMPLEMENT THIS METHOD - REMOVE THE NEXT LINE
+    
+    hessian = np.empty([w.shape[0], w.shape[0]])
+       
+    for colX, colY in zip(X, y):
+        
+        colX = colX[:, np.newaxis]
+        colY = colY[:,np.newaxis]
+        parent0 = np.dot(w.T, colX)
+        parent1 = np.dot(parent0, colY)
+        exp = np.exp(parent1)
+        denom = 1 + exp
+        denomsquared = denom * denom
+        numer = exp
+        fract = numer / denom
+        mult = np.dot(colX, colX.T)
+        final = mult * fract
+        hessian = hessian + final
+    
+    hessian = hessian * (1/X.shape[0])
+    
+    return hessian
+
+
+# In[18]:
+
+
+Xtrain,ytrain, Xtest, ytest = np.load(open('sample.pickle','rb')) 
+# add intercept
+Xtrain_i = np.concatenate((np.ones((Xtrain.shape[0],1)), Xtrain), axis=1)
+Xtest_i = np.concatenate((np.ones((Xtest.shape[0],1)), Xtest), axis=1)
+
+args = (Xtrain_i,ytrain)
+opts = {'maxiter' : 50}    # Preferred value.    
+w_init = np.zeros((Xtrain_i.shape[1], 1))
+soln = minimize(logisticObjVal, w_init, jac=logisticGradient, hess=logisticHessian, args=args,method='Newton-CG', options=opts)
+w = np.transpose(np.array(soln.x))
+w = np.reshape(w,[len(w),1])
+
+
+
+acc = evaluateLinearModel(w,Xtrain_i,ytrain)
+print('Logistic Regression Accuracy on train data - %.2f'%acc)
+acc = evaluateLinearModel(w,Xtest_i,ytest)
+print('Logistic Regression Accuracy on test data - %.2f'%acc)
+
+
+# In[ ]:
+
+
+
+
+
+# ### Problem 5 - Support Vector Machines Using Gradient Descent
+
+# In[19]:
+
+
+print('PROBLEM 5')
+print('----------')
+
+
+# In[20]:
+
+
+def trainSGDSVM(X,y,T,eta=0.01):
+    # learn a linear SVM by implementing the SGD algorithm
+    #
+    # Inputs:
+    # X = N x d
+    # y = N x 1
+    # T = number of iterations
+    # eta = learning rate
+    # Output:
+    # weight vector, w = d x 1
+    
+    # IMPLEMENT THIS METHOD
+    
+    def compywx(y,w,x,i):
+        w_t = w.T
+        wx = np.dot(w_t, x)
+        ywx = np.dot(wx, y)
+        return ywx
+    
+    w = np.zeros([X.shape[1],1])
+    
+    for i in range(T):
+        
+        xi = X[i]
+        yi = y[i]
+        
+        if compywx(yi, w, xi, i) < 1 : 
+            xi = xi[:, np.newaxis]
+            yi = yi[:, np.newaxis]
+            added = np.dot(xi, yi)
+            added1 = eta * added
+            w = w + added1
+    
+    return w
+
+
+# In[21]:
+
+
+Xtrain,ytrain, Xtest, ytest = np.load(open('sample.pickle','rb')) 
+# add intercept
+Xtrain_i = np.concatenate((np.ones((Xtrain.shape[0],1)), Xtrain), axis=1)
+Xtest_i = np.concatenate((np.ones((Xtest.shape[0],1)), Xtest), axis=1)
+
+args = (Xtrain_i,ytrain)
+w = trainSGDSVM(Xtrain_i,ytrain,100,0.01)
+acc = evaluateLinearModel(w,Xtrain_i,ytrain)
+print('SVM Accuracy on train data - %.2f'%acc)
+acc = evaluateLinearModel(w,Xtest_i,ytest)
+print('SVM Accuracy on test data - %.2f'%acc)
+
+
+# ### Problem 6 - Plotting decision boundaries
+
+# In[22]:
+
+
+print('Problem 6')
+print('---------')
+
+
+# In[23]:
+
+
+def plotBoundaries(w,X,y):
+    # plotting boundaries
+
+    mn = np.min(X,axis=0)
+    mx = np.max(X,axis=0)
+    x1 = np.linspace(mn[1],mx[1],100)
+    x2 = np.linspace(mn[2],mx[2],100)
+    xx1,xx2 = np.meshgrid(x1,x2)
+    xx = np.zeros((x1.shape[0]*x2.shape[0],2))
+    xx[:,0] = xx1.ravel()
+    xx[:,1] = xx2.ravel()
+    xx_i = np.concatenate((np.ones((xx.shape[0],1)), xx), axis=1)
+    ypred = predictLinearModel(w,xx_i)
+    ax.contourf(x1,x2,ypred.reshape((x1.shape[0],x2.shape[0])),alpha=0.3,cmap='cool')
+    ax.scatter(X[:,1],X[:,2],c=y.flatten())
+
+
+# In[24]:
+
+
+Xtrain,ytrain, Xtest, ytest = np.load(open('sample.pickle','rb')) 
+# add intercept
+Xtrain_i = np.concatenate((np.ones((Xtrain.shape[0],1)), Xtrain), axis=1)
+Xtest_i = np.concatenate((np.ones((Xtest.shape[0],1)), Xtest), axis=1)
+
+# Replace next three lines with code for learning w using the three methods
+
+#Perceptron
+
+args = (Xtrain_i,ytrain)
+opts = {'maxiter' : 50}       
+w_init = np.zeros((Xtrain_i.shape[1],1))
+
+soln1 = minimize(regressionObjVal, w_init, jac=regressionGradient, args=args,method='CG', options=opts)
+w_perceptron = np.transpose(np.array(soln1.x))
+w_perceptron = w_perceptron[:,np.newaxis]
+
+
+#Logistic    
+
+soln2 = minimize(logisticObjVal, w_init, jac=logisticGradient, hess=logisticHessian, args=args,method='Newton-CG', options=opts)
+w_logistic = np.transpose(np.array(soln2.x))
+w_logistic = np.reshape(w_logistic,[len(w_logistic),1])
+
+#SVM
+
+w_svm = trainSGDSVM(Xtrain_i,ytrain,100,0.01)
+
+
+fig = plt.figure(figsize=(20,6))
+
+ax = plt.subplot(1,3,1)
+plotBoundaries(w_perceptron,Xtrain_i,ytrain)
+ax.set_title('Perceptron')
+
+ax = plt.subplot(1,3,2)
+plotBoundaries(w_logistic,Xtrain_i,ytrain)
+ax.set_title('Logistic Regression')
+
+ax = plt.subplot(1,3,3)
+plotBoundaries(w_svm,Xtrain_i,ytrain)
+ax.set_title('SVM')
+
+
+# In[ ]:
+
+
+
+
+
+# In[ ]:
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# In[ ]:
+
+
+
+
+
+# In[ ]:
+
+
+
+
+
+# In[ ]:
+
+
+
+
